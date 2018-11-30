@@ -4,9 +4,8 @@
 #import <Cordova/CDVPlugin.h>
 
 #import <GoogleMobileAds/GADAdSize.h>
-#import <GoogleMobileAds/GADBannerView.h>
+#import <GoogleMobileAds/DFPBannerView.h>
 #import <GoogleMobileAds/GADInterstitial.h>
-#import <GoogleMobileAds/GADBannerViewDelegate.h>
 #import <GoogleMobileAds/GADInterstitialDelegate.h>
 #import <GoogleMobileAds/GADExtras.h>
 #import <GoogleMobileAds/GADRewardBasedVideoAd.h>
@@ -14,7 +13,7 @@
 
 #pragma mark - JS requestAd options
 
-@class GADBannerView;
+@class DFPBannerView;
 
 @class GADInterstitial;
 
@@ -24,12 +23,12 @@
 
 // This version of the AdMob plugin has been tested with Cordova version 2.5.0.
 
-@interface CDVAdMob : CDVPlugin <GADBannerViewDelegate, GADInterstitialDelegate, GADRewardBasedVideoAdDelegate> {
+@interface CDVAdMob : CDVPlugin <GADInterstitialDelegate, GADRewardBasedVideoAdDelegate> {
     @protected
     UIView* _safeAreaBackgroundView;
 }
 
-@property(nonatomic, retain) GADBannerView *bannerView;
+@property(nonatomic, retain) DFPBannerView *bannerView;
 @property(nonatomic, retain) GADInterstitial *interstitialView;
 @property(nonatomic, retain) GADRewardBasedVideoAd *rewardVideoView;
 

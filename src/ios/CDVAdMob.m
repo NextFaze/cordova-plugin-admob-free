@@ -12,7 +12,7 @@
 - (void) __showAd:(BOOL)show;
 - (BOOL) __showInterstitial:(BOOL)show;
 - (void) __showRewardedVideo:(BOOL)show;
-- (GADRequest*) __buildAdRequest;
+- (DFPRequest*) __buildAdRequest;
 - (NSString*) __md5: (NSString*) s;
 - (NSString *) __getAdMobDeviceId;
 
@@ -81,7 +81,7 @@
     publisherId = DEFAULT_BANNER_ID;
     interstitialAdId = DEFAULT_INTERSTITIAL_ID;
     rewardVideoId = DEFAULT_REWARD_VIDEO_ID;
-    adSize = [self __AdSizeFromString:@"SMART_BANNER"];
+    adSize = kGADAdSizeBanner;
 
     bannerAtTop = false;
     bannerOverlap = false;
@@ -234,15 +234,11 @@
 
     bannerShow = show;
 
-    if(! self.bannerView) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"adView is null, call createBannerView first."];
-
-    } else {
+   
         [self __showAd:show];
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 
-    }
-
+   
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
@@ -404,7 +400,7 @@
                 self.rewardVideoView = [GADRewardBasedVideoAd sharedInstance];
                 self.rewardVideoView.delegate = self;
 
-                [self.rewardVideoView loadRequest:[GADRequest request] withAdUnitID:self.rewardVideoId];
+                [self.rewardVideoView loadRequest:[DFPRequest request] withAdUnitID:self.rewardVideoId];
             }
         }
     }
@@ -533,10 +529,10 @@
     //self.webView.superview.tintColor = [UIColor whiteColor];
 
     if (!self.bannerView){
-        self.bannerView = [[GADBannerView alloc] initWithAdSize:adSize];
+        self.bannerView = [[DFPBannerView alloc] initWithAdSize:adSize];
         self.bannerView.adUnitID = [self publisherId];
-        self.bannerView.delegate = self;
         self.bannerView.rootViewController = self.viewController;
+        self.bannerView.translatesAutoresizingMaskIntoConstraints = NO;
 
         self.bannerIsInitialized = YES;
         self.bannerIsVisible = NO;
@@ -547,8 +543,8 @@
     }
 }
 
-- (GADRequest*) __buildAdRequest {
-    GADRequest *request = [GADRequest request];
+- (DFPRequest*) __buildAdRequest {
+    DFPRequest *request = [DFPRequest request];
 
     if (self.isTesting) {
         NSString* deviceId = [self __getAdMobDeviceId];
@@ -587,7 +583,7 @@
 }
 
 - (void) __showAd:(BOOL)show {
-    //NSLog(@"Show Ad: %d", show);
+    NSLog(@"Show Ad: %d", show);
 
     if (!self.bannerIsInitialized){
         [self __createBanner];
@@ -601,8 +597,24 @@
 
         UIView* parentView = self.bannerOverlap ? self.webView : [self.webView superview];
         [parentView addSubview:self.bannerView];
-        [parentView bringSubviewToFront:self.bannerView];
-        [self resizeViews];
+        [parentView addConstraints:@[
+                                     [NSLayoutConstraint constraintWithItem:self.bannerView
+                                                                  attribute:NSLayoutAttributeBottom
+                                                                  relatedBy:NSLayoutRelationEqual
+                                                                     toItem:self.viewController.bottomLayoutGuide
+                                                                  attribute:NSLayoutAttributeTop
+                                                                 multiplier:1
+                                                                   constant:0],
+                                     [NSLayoutConstraint constraintWithItem:self.bannerView
+                                                                  attribute:NSLayoutAttributeCenterX
+                                                                  relatedBy:NSLayoutRelationEqual
+                                                                     toItem:parentView
+                                                                  attribute:NSLayoutAttributeCenterX
+                                                                 multiplier:1
+                                                                   constant:0]
+                                     ]];
+        //[parentView bringSubviewToFront:self.bannerView];
+        //[self resizeViews];
 
         self.bannerIsVisible = YES;
     } else {
@@ -822,9 +834,9 @@
     [self.commandDelegate evalJs:js];
 }
 
-#pragma mark GADBannerViewDelegate implementation
+#pragma mark DFPBannerViewDelegate implementation
 
-- (void)adViewDidReceiveAd:(GADBannerView *)adView {
+- (void)adViewDidReceiveAd:(DFPBannerView *)adView {
     if(self.bannerShow) {
         [self __showAd:YES];
     }
@@ -832,36 +844,24 @@
     [self fireEvent:@"" event:@"onReceiveAd" withData:nil];
 }
 
-- (void)adView:(GADBannerView *)view didFailToReceiveAdWithError:(GADRequestError *)error {
-    NSString* jsonData = [NSString stringWithFormat:@"{ 'error': '%@', 'adType':'banner' }", [error localizedFailureReason]];
-    [self fireEvent:@"" event:@"admob.banner.events.LOAD_FAIL" withData:jsonData];
-    [self fireEvent:@"" event:@"onFailedToReceiveAd" withData:jsonData];
-}
 
-- (void)adViewWillLeaveApplication:(GADBannerView *)adView {
+- (void)adViewWillLeaveApplication:(DFPBannerView *)adView {
     NSString* jsonData = @"{ 'adType':'banner' }";
     [self fireEvent:@"" event:@"admob.banner.events.EXIT_APP" withData:jsonData];
     [self fireEvent:@"" event:@"onLeaveToAd" withData:jsonData];
 }
 
-- (void)adViewWillPresentScreen:(GADBannerView *)adView {
+- (void)adViewWillPresentScreen:(DFPBannerView *)adView {
     [self fireEvent:@"" event:@"admob.banner.events.OPEN" withData:nil];
     [self fireEvent:@"" event:@"onPresentAd" withData:nil];
 }
 
-- (void)adViewDidDismissScreen:(GADBannerView *)adView {
+- (void)adViewDidDismissScreen:(DFPBannerView *)adView {
     [self fireEvent:@"" event:@"admob.banner.events.CLOSE" withData:nil];
     [self fireEvent:@"" event:@"onDismissAd" withData:nil];
 }
 
 #pragma mark GADInterstitialDelegate implementation
-
-- (void)interstitial:(GADInterstitial *)ad
-    didFailToReceiveAdWithError:(GADRequestError *)error {
-    NSString* jsonData = [NSString stringWithFormat:@"{ 'error': '%@', 'adType':'interstitial' }", [error localizedFailureReason]];
-    [self fireEvent:@"" event:@"admob.interstitial.events.LOAD_FAIL" withData:jsonData];
-    [self fireEvent:@"" event:@"onFailedToReceiveAd" withData:jsonData];
-}
 
 - (void)interstitialWillLeaveApplication:(GADInterstitial *)interstitial {
     NSString* jsonData = @"{ 'adType':'interstitial' }";
